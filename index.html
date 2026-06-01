@@ -86,9 +86,25 @@
   .idea{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:13px 16px;margin-bottom:9px;font-size:16px;display:flex;gap:10px;align-items:flex-start}
   .idea::before{content:"✦";color:var(--accent);flex:none;margin-top:2px}
 
-  /* L4 radar — quiet watch strip */
-  .radar{margin-top:34px}
-  .radar h2{font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:12px}
+  /* ── state × home grid ────────────────────────────────────────── */
+  /* State section: Live / Radar / Parked */
+  .state-section{margin-bottom:32px}
+  .state-section > .state-heading{
+    font-size:14px;letter-spacing:.10em;text-transform:uppercase;
+    color:var(--muted);font-weight:600;margin-bottom:16px;
+    border-bottom:1px solid var(--line);padding-bottom:8px;
+  }
+  /* Area group heading inside a state section */
+  .area-heading{
+    font-size:11px;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--muted);font-weight:600;margin:18px 0 10px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .area-heading::after{content:'';flex:1;height:1px;background:var(--line);}
+  /* first area group in a section — no top margin */
+  .area-group:first-child .area-heading{margin-top:0}
+
+  /* L4 radar — inside state-section now */
   .radar-item{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:13px 16px;margin-bottom:9px}
   .radar-item .r-head{display:flex;align-items:center;gap:10px}
   .radar-item .r-name{font-size:16px;font-weight:500;flex:1}
@@ -96,6 +112,25 @@
   .r-dot{width:8px;height:8px;border-radius:99px;background:var(--line);flex:none}
   .radar-item.due .r-dot{background:var(--accent)}
   .r-due-label{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);flex:none}
+
+  /* Parked section — collapsed by default via <details> */
+  .parked-details{margin-bottom:0}
+  .parked-details summary{
+    list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;
+    font-size:14px;letter-spacing:.10em;text-transform:uppercase;
+    color:var(--muted);font-weight:600;
+    border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:0;
+    user-select:none;
+  }
+  .parked-details summary::-webkit-details-marker{display:none}
+  .parked-details summary::before{
+    content:'▶';font-size:9px;color:var(--muted);transition:transform .2s;
+  }
+  .parked-details[open] summary::before{transform:rotate(90deg);}
+  .parked-details[open] summary{margin-bottom:16px;}
+  .parked-details .parked-body{/* revealed by [open] */}
+
+  /* ── end grid ─────────────────────────────────────────────────── */
 
   .spark{position:fixed;width:9px;height:9px;border-radius:2px;pointer-events:none;z-index:40}
 
@@ -110,6 +145,11 @@
   #auth .msg{margin-top:14px;font-size:14px;color:var(--muted);min-height:20px}
   .hidden{display:none!important}
   .empty{color:var(--muted);font-style:italic;padding:30px 0;text-align:center}
+
+  /* demo banner */
+  .demo-banner{background:var(--accent-soft);border:1px solid var(--accent);color:var(--accent);
+    border-radius:10px;padding:8px 16px;font-size:13px;text-align:center;margin-bottom:20px;letter-spacing:.04em}
+  html[data-mode="deep"] .demo-banner{color:var(--accent)}
 </style>
 </head>
 <body>
@@ -140,6 +180,9 @@
   </div>
   <p class="intro" id="intro"></p>
 
+  <!-- demo notice, hidden unless ?demo=1 -->
+  <div class="demo-banner hidden" id="demoBanner">Demo mode — mock data, no Supabase queries</div>
+
   <div class="keystone hidden" id="keystone"></div>
 
   <div class="overall">
@@ -150,8 +193,9 @@
     <div><div class="label" id="overallLabel">Loading…</div><div class="sub" id="overallSub"></div></div>
   </div>
 
-  <div id="goals"></div>
-  <div class="radar hidden" id="radarSection"><h2>On your radar</h2><div id="radar"></div></div>
+  <!-- state × home grid -->
+  <div id="grid"></div>
+
   <div class="ideas"><h2>Idea parking lot</h2><div id="ideas"></div></div>
 </div>
 
@@ -172,9 +216,47 @@ const RING_C = 2 * Math.PI * 24;
 let MODEL = { projects: [], tasks: [], ideas: [] };
 const today = new Date().toISOString().slice(0,10);
 
+// ---------- demo mode (?demo=1) ----------
+const IS_DEMO = new URLSearchParams(location.search).get('demo') === '1';
+
+// Mock MODEL covering all three states across 3+ areas.
+// IDs are strings just to keep them simple (never go to Supabase in demo).
+const DEMO_MODEL = {
+  projects: [
+    // ── LIVE (status=active) ──
+    { id:'p1', name:'SBH Membership Drive', area:'SBH',     status:'active', position:1, why:'Fill off-peak slots before end of quarter',  default_assignee:'ZW',   resurface_every_days:null, last_surfaced_at:null, radar_note:null },
+    { id:'p2', name:'Sleep Curriculum',     area:'learning', status:'active', position:2, why:'Build the foundation for sleep-medicine mastery', default_assignee:'ZW',   resurface_every_days:null, last_surfaced_at:null, radar_note:null },
+    { id:'p3', name:'Clinic Intake Forms',  area:'clinic',  status:'active', position:3, why:'Streamline new-patient onboarding',             default_assignee:'Steph', resurface_every_days:null, last_surfaced_at:null, radar_note:null },
+    // ── RADAR (status=parked, resurface_every_days != null) ──
+    // p4: due (last surfaced 40 days ago, cadence=30)
+    { id:'p4', name:'HL Partner Pipeline',  area:'HL',      status:'parked',  position:4, why:null, default_assignee:'ZW',
+      resurface_every_days:30, last_surfaced_at: new Date(Date.now()-40*86400000).toISOString(), radar_note:'Check pipeline status and follow up with 3 warm leads.' },
+    // p5: not due (last surfaced 5 days ago, cadence=14)
+    { id:'p5', name:'Pricing Review',       area:'pricing', status:'parked',  position:5, why:null, default_assignee:'ZW',
+      resurface_every_days:14, last_surfaced_at: new Date(Date.now()-5*86400000).toISOString(),  radar_note:'Compare experimental vs bedrock rates.' },
+    // ── PARKED (status=parked, resurface_every_days == null) ──
+    { id:'p6', name:'SBH Merch Ideas',      area:'SBH',     status:'parked',  position:6, why:null, default_assignee:'ZW',   resurface_every_days:null, last_surfaced_at:null, radar_note:'T-shirts, towels, branded cold plunge kits.' },
+    { id:'p7', name:'Internal Tooling v2',  area:'internal-tooling', status:'parked', position:7, why:null, default_assignee:'ZW', resurface_every_days:null, last_surfaced_at:null, radar_note:'Refactor the daily-workspace harness.' },
+  ],
+  tasks: [
+    // SBH Membership Drive tasks (p1)
+    { id:'t1',  project_id:'p1', text:'Draft email to lapsed members',     status:'done', optional:false, assignee:'ZW',    position:1, scheduled_for:null, done_at: new Date().toISOString() },
+    { id:'t2',  project_id:'p1', text:'Post off-peak promo to Instagram',  status:'open', optional:false, assignee:'ZW',    position:2, scheduled_for:null, done_at:null },
+    { id:'t3',  project_id:'p1', text:'A/B test subject lines',            status:'open', optional:true,  assignee:'ZW',    position:3, scheduled_for:null, done_at:null },
+    // Sleep Curriculum tasks (p2)
+    { id:'t4',  project_id:'p2', text:'Read AASM classification chapter',  status:'open', optional:false, assignee:'ZW',    position:1, scheduled_for:null, done_at:null },
+    { id:'t5',  project_id:'p2', text:'Build orexin anatomy card',         status:'open', optional:false, assignee:'ZW',    position:2, scheduled_for:null, done_at:null },
+    // Clinic Intake Forms tasks (p3) — assigned to Steph
+    { id:'t6',  project_id:'p3', text:'Finalise consent form wording',     status:'open', optional:false, assignee:'Steph', position:1, scheduled_for:null, done_at:null },
+    { id:'t7',  project_id:'p3', text:'Upload to Typeform',                status:'open', optional:false, assignee:'Steph', position:2, scheduled_for:null, done_at:null },
+  ],
+  ideas: [
+    { id:'i1', text:'Cold plunge + espresso morning ritual package' },
+    { id:'i2', text:'Sleep score challenge — 30-day cohort' },
+  ]
+};
+
 // ---------- person (ZW / Steph / Both) ----------
-// Single login owns everything; this is just a view filter. Deep-linkable via ?person=steph
-// so each person bookmarks their own page. 'shared' tasks show on both.
 let CURRENT_PERSON = 'ZW';
 function initPerson(){
   const url=(new URLSearchParams(location.search).get('person')||'').toLowerCase();
@@ -198,35 +280,15 @@ function personMatch(t){
 initPerson();
 
 // ---------- L4 resurfacing (radar) ----------
-// A watch-item = a parked project with a resurface cadence. "Due" when it hasn't surfaced within
-// resurface_every_days. The strip stays quiet; due items get an accent dot + "resurface" label.
 function isDue(p){
   if(p.resurface_every_days==null) return false;
   if(!p.last_surfaced_at) return true;
   return (Date.now()-new Date(p.last_surfaced_at).getTime())/86400000 >= p.resurface_every_days;
 }
-function renderRadar(){
-  const sec=$('radarSection'), host=$('radar');
-  const items=MODEL.projects
-    .filter(p=>p.status==='parked' && p.resurface_every_days!=null && personMatch({assignee:p.default_assignee}))
-    .sort((a,b)=>(isDue(b)?1:0)-(isDue(a)?1:0));
-  if(!items.length){ sec.classList.add('hidden'); host.innerHTML=''; return; }
-  sec.classList.remove('hidden'); host.innerHTML='';
-  items.forEach(p=>{
-    const due=isDue(p);
-    const d=document.createElement('div'); d.className='radar-item'+(due?' due':'');
-    d.innerHTML=`<div class="r-head"><span class="r-dot"></span><span class="r-name">${esc(p.name)}</span>`+
-      `${due?'<span class="r-due-label">resurface</span>':''}</div>`+
-      `${p.radar_note?`<div class="r-note">${esc(p.radar_note)}</div>`:''}`;
-    host.appendChild(d);
-  });
-}
 
 // ---------- auth ----------
 const $ = id => document.getElementById(id);
 const STORAGE_KEY = 'sb-ekgvjhngsorjgavozhhf-auth-token';
-// getSession can hang forever trying to refresh a stale token. Race it against a
-// timeout; if it hangs, drop the bad token and fall back to the login screen.
 async function getSessionSafe(){
   return Promise.race([
     sb.auth.getSession().then(r => r.data.session).catch(() => null),
@@ -234,6 +296,16 @@ async function getSessionSafe(){
   ]);
 }
 async function refreshAuth(){
+  // Demo mode: skip auth entirely, load mock data
+  if(IS_DEMO){
+    $('auth').classList.add('hidden');
+    $('app').classList.remove('hidden');
+    $('demoBanner').classList.remove('hidden');
+    $('logoutBtn').classList.add('hidden');
+    MODEL = DEMO_MODEL;
+    render();
+    return;
+  }
   let session = await getSessionSafe();
   if(session === 'TIMEOUT'){
     try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
@@ -264,8 +336,6 @@ async function load(){
 
 // today's view: a project shows if it has any task open OR scheduled today OR done today
 function visibleTasks(pid){
-  // "Today" = open tasks due today-or-earlier (or undated) ∪ tasks done today.
-  // Future-scheduled tasks stay hidden until their day.
   return MODEL.tasks.filter(t=>t.project_id===pid && personMatch(t) && (
     (t.status==='open' && (!t.scheduled_for || t.scheduled_for <= today)) ||
     (t.done_at && t.done_at.slice(0,10)===today)
@@ -277,42 +347,149 @@ function reqStats(list){
   return { total:req.length, done, pct: req.length?Math.round(100*done/req.length):0, complete: req.length>0 && done===req.length };
 }
 
+// ---------- helpers: group by area, ordered by min-position within group ----------
+function groupByArea(projects){
+  // returns [{area, minPos, projects:[...]}, ...] sorted by minPos
+  const map = new Map(); // area -> {minPos, list}
+  projects.forEach(p=>{
+    if(!map.has(p.area)) map.set(p.area, {minPos:p.position, list:[]});
+    const g = map.get(p.area);
+    if(p.position < g.minPos) g.minPos = p.position;
+    g.list.push(p);
+  });
+  return [...map.entries()]
+    .sort((a,b)=>a[1].minPos - b[1].minPos)
+    .map(([area,{list}])=>({area, projects:list}));
+}
+
+// ---------- render goal card (Live section) ----------
+function buildGoalCard(p, projNexts){
+  const list = visibleTasks(p.id);
+  if(!list.length) return null;
+  const st = reqStats(list);
+  const card = document.createElement('div');
+  card.id = 'proj-'+p.id;
+  card.className='goal'+(st.complete?' complete':'');
+  card.innerHTML = `<div class="goal-head"><div class="goal-title">${esc(p.name)}</div>
+    <div class="goal-pct">${st.done}/${st.total}</div></div>
+    ${p.why?`<div class="goal-why">${esc(p.why)}</div>`:''}
+    <div class="bar"><i style="width:${st.pct}%"></i></div><ul class="subs"></ul>`;
+  const ul = card.querySelector('.subs');
+  let nextClaimed = false;
+  list.forEach(t=>{
+    const li=document.createElement('li');
+    let cls='sub', chip='';
+    if(t.status==='done'){ cls+=' done'; }
+    else if(!t.optional && !nextClaimed){ cls+=' next'; nextClaimed=true; chip='<span class="next-chip">▶ next</span>'; projNexts.push({p,t}); }
+    else if(!t.optional){ cls+=' upcoming'; }
+    if(!chip && t.optional) chip='<span class="tag-opt">optional</span>';
+    li.className=cls;
+    li.innerHTML=`<span class="box"><svg viewBox="0 0 14 14"><polyline points="2,7 6,11 12,3"/></svg></span>
+      <span class="sub-text">${esc(t.text)}</span>${chip}`;
+    li.onclick=()=>toggle(t, li);
+    ul.appendChild(li);
+  });
+  return card;
+}
+
+// ---------- render radar item ----------
+function buildRadarItem(p){
+  const due=isDue(p);
+  const d=document.createElement('div'); d.className='radar-item'+(due?' due':'');
+  d.innerHTML=`<div class="r-head"><span class="r-dot"></span><span class="r-name">${esc(p.name)}</span>`+
+    `${due?'<span class="r-due-label">resurface</span>':''}</div>`+
+    `${p.radar_note?`<div class="r-note">${esc(p.radar_note)}</div>`:''}`;
+  return d;
+}
+
+// ---------- render parked item (browse-only, no tasks) ----------
+function buildParkedItem(p){
+  const d=document.createElement('div'); d.className='radar-item'; // reuse .radar-item style
+  d.innerHTML=`<div class="r-head"><span class="r-dot" style="background:var(--line)"></span><span class="r-name">${esc(p.name)}</span></div>`+
+    `${p.radar_note?`<div class="r-note">${esc(p.radar_note)}</div>`:''}`;
+  return d;
+}
+
+// ---------- render area heading ----------
+function buildAreaHeading(area){
+  const h=document.createElement('div'); h.className='area-heading';
+  h.textContent=area; return h;
+}
+
+// ---------- main render ----------
 function render(){
   $('dateLabel').textContent = new Date(today+'T00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
   $('intro').textContent = CURRENT_PERSON==='both' ? "Everyone's day." : `${CURRENT_PERSON}'s day.`;
-  const host = $('goals'); host.innerHTML='';
-  let shown = 0; const projNexts = [];
-  MODEL.projects.forEach(p=>{
-    const list = visibleTasks(p.id);
-    if(!list.length) return;
-    shown++;
-    const st = reqStats(list);
-    const card = document.createElement('div');
-    card.id = 'proj-'+p.id;
-    card.className='goal'+(st.complete?' complete':'');
-    card.innerHTML = `<div class="goal-head"><div class="goal-title">${esc(p.name)}</div>
-      <span class="goal-area">${esc(p.area)}</span><div class="goal-pct">${st.done}/${st.total}</div></div>
-      ${p.why?`<div class="goal-why">${esc(p.why)}</div>`:''}
-      <div class="bar"><i style="width:${st.pct}%"></i></div><ul class="subs"></ul>`;
-    const ul = card.querySelector('.subs');
-    // sequential: first open required leaf = this project's "next"; later open required leaves recede
-    let nextClaimed = false;
-    list.forEach(t=>{
-      const li=document.createElement('li');
-      let cls='sub', chip='';
-      if(t.status==='done'){ cls+=' done'; }
-      else if(!t.optional && !nextClaimed){ cls+=' next'; nextClaimed=true; chip='<span class="next-chip">▶ next</span>'; projNexts.push({p,t}); }
-      else if(!t.optional){ cls+=' upcoming'; }
-      if(!chip && t.optional) chip='<span class="tag-opt">optional</span>';
-      li.className=cls;
-      li.innerHTML=`<span class="box"><svg viewBox="0 0 14 14"><polyline points="2,7 6,11 12,3"/></svg></span>
-        <span class="sub-text">${esc(t.text)}</span>${chip}`;
-      li.onclick=()=>toggle(t, li);
-      ul.appendChild(li);
+
+  const grid = $('grid'); grid.innerHTML='';
+  const projNexts = [];
+
+  // ── partition projects ──
+  const liveProjects   = MODEL.projects.filter(p=>p.status==='active');
+  const radarProjects  = MODEL.projects.filter(p=>p.status==='parked' && p.resurface_every_days!=null
+                          && personMatch({assignee:p.default_assignee}));
+  const parkedProjects = MODEL.projects.filter(p=>p.status==='parked' && p.resurface_every_days==null
+                          && personMatch({assignee:p.default_assignee}));
+
+  // ── LIVE section ──
+  // Only show projects that actually have visible tasks for the current person
+  const liveGroups = groupByArea(liveProjects.filter(p=>{
+    // include if has visible tasks — check early so empty groups are skipped
+    return visibleTasks(p.id).length > 0;
+  }));
+
+  if(liveGroups.length){
+    const sec = document.createElement('div'); sec.className='state-section';
+    const h = document.createElement('div'); h.className='state-heading'; h.textContent='Live';
+    sec.appendChild(h);
+    liveGroups.forEach(({area, projects:ps})=>{
+      const grp = document.createElement('div'); grp.className='area-group';
+      grp.appendChild(buildAreaHeading(area));
+      ps.forEach(p=>{
+        const card=buildGoalCard(p, projNexts);
+        if(card) grp.appendChild(card);
+      });
+      sec.appendChild(grp);
     });
-    host.appendChild(card);
-  });
-  if(!shown) host.innerHTML='<div class="empty">No open tasks. Add some via Claude, or enjoy the quiet. 🌿</div>';
+    grid.appendChild(sec);
+  }
+
+  // ── RADAR section ──
+  if(radarProjects.length){
+    const sec = document.createElement('div'); sec.className='state-section';
+    const h = document.createElement('div'); h.className='state-heading'; h.textContent='Radar';
+    sec.appendChild(h);
+    // sort: due items first
+    const sorted = [...radarProjects].sort((a,b)=>(isDue(b)?1:0)-(isDue(a)?1:0));
+    const radarGroups = groupByArea(sorted);
+    radarGroups.forEach(({area, projects:ps})=>{
+      const grp = document.createElement('div'); grp.className='area-group';
+      grp.appendChild(buildAreaHeading(area));
+      ps.forEach(p=>grp.appendChild(buildRadarItem(p)));
+      sec.appendChild(grp);
+    });
+    grid.appendChild(sec);
+  }
+
+  // ── PARKED section (collapsed by default) ──
+  if(parkedProjects.length){
+    const details = document.createElement('details');
+    details.className='parked-details state-section';
+    const summary = document.createElement('summary');
+    summary.textContent='Parked';
+    details.appendChild(summary);
+    const body = document.createElement('div'); body.className='parked-body';
+    const parkedGroups = groupByArea(parkedProjects);
+    parkedGroups.forEach(({area, projects:ps})=>{
+      const grp = document.createElement('div'); grp.className='area-group';
+      grp.appendChild(buildAreaHeading(area));
+      ps.forEach(p=>grp.appendChild(buildParkedItem(p)));
+      body.appendChild(grp);
+    });
+    details.appendChild(body);
+    grid.appendChild(details);
+  }
+
   // keystone = the next step of the highest-priority project (projects are ordered by position)
   const ks=$('keystone');
   if(projNexts.length){
@@ -321,13 +498,19 @@ function render(){
     ks.innerHTML=`<div class="k-label">▶ Start here · keystone</div><div class="k-text">${esc(t.text)}</div><div class="k-proj">in ${esc(p.name)}</div>`;
     ks.onclick=()=>{const c=document.getElementById('proj-'+p.id); if(c) c.scrollIntoView({behavior:'smooth',block:'center'});};
   } else { ks.classList.add('hidden'); ks.innerHTML=''; }
+
   const ib=$('ideas'); ib.innerHTML='';
   MODEL.ideas.forEach(i=>{const d=document.createElement('div');d.className='idea';d.textContent=i.text;ib.appendChild(d);});
-  renderRadar();
+
   updateOverall();
 }
 
 async function toggle(t, li){
+  if(IS_DEMO){ // demo: optimistic only, no Supabase write
+    const newStatus = t.status==='done' ? 'open' : 'done';
+    t.status=newStatus; t.done_at = newStatus==='done'? new Date().toISOString() : null;
+    render(); return;
+  }
   const newStatus = t.status==='done' ? 'open' : 'done';
   // optimistic
   t.status=newStatus; t.done_at = newStatus==='done'? new Date().toISOString() : null;
@@ -341,19 +524,20 @@ async function toggle(t, li){
 }
 
 function renderBars(){
-  let i=0;
-  MODEL.projects.forEach(p=>{
-    const list=visibleTasks(p.id); if(!list.length) return;
-    const card=document.querySelectorAll('.goal')[i++]; if(!card) return;
+  document.querySelectorAll('.goal').forEach(card=>{
+    const pid=card.id.replace('proj-','');
+    const p=MODEL.projects.find(x=>x.id===pid||x.id==pid);
+    if(!p) return;
+    const list=visibleTasks(p.id);
     const st=reqStats(list);
     card.classList.toggle('complete', st.complete);
-    card.querySelector('.goal-pct').textContent=`${st.done}/${st.total}`;
-    card.querySelector('.bar>i').style.width=st.pct+'%';
+    const pctEl=card.querySelector('.goal-pct'); if(pctEl) pctEl.textContent=`${st.done}/${st.total}`;
+    const barEl=card.querySelector('.bar>i'); if(barEl) barEl.style.width=st.pct+'%';
   });
 }
 function updateOverall(){
   let total=0,done=0,goals=0,gdone=0;
-  MODEL.projects.forEach(p=>{const l=visibleTasks(p.id);if(!l.length)return;goals++;const s=reqStats(l);total+=s.total;done+=s.done;if(s.complete)gdone++;});
+  MODEL.projects.filter(p=>p.status==='active').forEach(p=>{const l=visibleTasks(p.id);if(!l.length)return;goals++;const s=reqStats(l);total+=s.total;done+=s.done;if(s.complete)gdone++;});
   const pct=total?Math.round(100*done/total):0;
   $('ring').setAttribute('stroke-dasharray',RING_C);
   $('ring').setAttribute('stroke-dashoffset',RING_C*(1-pct/100));
@@ -388,7 +572,9 @@ syncMode();
 document.querySelectorAll('#persons .pill').forEach(b=>b.onclick=()=>setPerson(b.dataset.person));
 syncPersons();
 
-sb.auth.onAuthStateChange(()=>refreshAuth());
+sb.auth.onAuthStateChange(()=>{
+  if(!IS_DEMO) refreshAuth();
+});
 refreshAuth();
 </script>
 </body>
