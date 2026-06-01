@@ -134,8 +134,21 @@ const today = new Date().toISOString().slice(0,10);
 
 // ---------- auth ----------
 const $ = id => document.getElementById(id);
+const STORAGE_KEY = 'sb-ekgvjhngsorjgavozhhf-auth-token';
+// getSession can hang forever trying to refresh a stale token. Race it against a
+// timeout; if it hangs, drop the bad token and fall back to the login screen.
+async function getSessionSafe(){
+  return Promise.race([
+    sb.auth.getSession().then(r => r.data.session).catch(() => null),
+    new Promise(res => setTimeout(() => res('TIMEOUT'), 3500))
+  ]);
+}
 async function refreshAuth(){
-  const { data:{ session } } = await sb.auth.getSession();
+  let session = await getSessionSafe();
+  if(session === 'TIMEOUT'){
+    try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
+    session = null;
+  }
   if(session){ $('auth').classList.add('hidden'); $('app').classList.remove('hidden'); load(); }
   else { $('auth').classList.remove('hidden'); $('app').classList.add('hidden'); }
 }
