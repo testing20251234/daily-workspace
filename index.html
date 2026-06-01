@@ -152,8 +152,12 @@ async function load(){
 
 // today's view: a project shows if it has any task open OR scheduled today OR done today
 function visibleTasks(pid){
-  return MODEL.tasks.filter(t=>t.project_id===pid &&
-    (t.status==='open' || (t.done_at && t.done_at.slice(0,10)===today)));
+  // "Today" = open tasks due today-or-earlier (or undated) ∪ tasks done today.
+  // Future-scheduled tasks stay hidden until their day.
+  return MODEL.tasks.filter(t=>t.project_id===pid && (
+    (t.status==='open' && (!t.scheduled_for || t.scheduled_for <= today)) ||
+    (t.done_at && t.done_at.slice(0,10)===today)
+  ));
 }
 function reqStats(list){
   const req = list.filter(t=>!t.optional);
