@@ -85,6 +85,18 @@
   .ideas h2{font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:12px}
   .idea{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:13px 16px;margin-bottom:9px;font-size:16px;display:flex;gap:10px;align-items:flex-start}
   .idea::before{content:"✦";color:var(--accent);flex:none;margin-top:2px}
+
+  /* L4 radar — quiet watch strip */
+  .radar{margin-top:34px}
+  .radar h2{font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:12px}
+  .radar-item{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:13px 16px;margin-bottom:9px}
+  .radar-item .r-head{display:flex;align-items:center;gap:10px}
+  .radar-item .r-name{font-size:16px;font-weight:500;flex:1}
+  .radar-item .r-note{color:var(--muted);font-size:14px;margin-top:5px;line-height:1.45}
+  .r-dot{width:8px;height:8px;border-radius:99px;background:var(--line);flex:none}
+  .radar-item.due .r-dot{background:var(--accent)}
+  .r-due-label{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);flex:none}
+
   .spark{position:fixed;width:9px;height:9px;border-radius:2px;pointer-events:none;z-index:40}
 
   /* auth */
@@ -138,6 +150,7 @@
   </div>
 
   <div id="goals"></div>
+  <div class="radar hidden" id="radarSection"><h2>On your radar</h2><div id="radar"></div></div>
   <div class="ideas"><h2>Idea parking lot</h2><div id="ideas"></div></div>
 </div>
 
@@ -183,6 +196,31 @@ function personMatch(t){
 }
 initPerson();
 
+// ---------- L4 resurfacing (radar) ----------
+// A watch-item = a parked project with a resurface cadence. "Due" when it hasn't surfaced within
+// resurface_every_days. The strip stays quiet; due items get an accent dot + "resurface" label.
+function isDue(p){
+  if(p.resurface_every_days==null) return false;
+  if(!p.last_surfaced_at) return true;
+  return (Date.now()-new Date(p.last_surfaced_at).getTime())/86400000 >= p.resurface_every_days;
+}
+function renderRadar(){
+  const sec=$('radarSection'), host=$('radar');
+  const items=MODEL.projects
+    .filter(p=>p.status==='parked' && p.resurface_every_days!=null && personMatch({assignee:p.default_assignee}))
+    .sort((a,b)=>(isDue(b)?1:0)-(isDue(a)?1:0));
+  if(!items.length){ sec.classList.add('hidden'); host.innerHTML=''; return; }
+  sec.classList.remove('hidden'); host.innerHTML='';
+  items.forEach(p=>{
+    const due=isDue(p);
+    const d=document.createElement('div'); d.className='radar-item'+(due?' due':'');
+    d.innerHTML=`<div class="r-head"><span class="r-dot"></span><span class="r-name">${esc(p.name)}</span>`+
+      `${due?'<span class="r-due-label">resurface</span>':''}</div>`+
+      `${p.radar_note?`<div class="r-note">${esc(p.radar_note)}</div>`:''}`;
+    host.appendChild(d);
+  });
+}
+
 // ---------- auth ----------
 const $ = id => document.getElementById(id);
 const STORAGE_KEY = 'sb-ekgvjhngsorjgavozhhf-auth-token';
@@ -215,7 +253,7 @@ $('logoutBtn').onclick = async ()=>{ await sb.auth.signOut(); refreshAuth(); };
 // ---------- data ----------
 async function load(){
   const [{data:projects},{data:tasks},{data:ideas}] = await Promise.all([
-    sb.from('projects').select('*').eq('status','active').order('position'),
+    sb.from('projects').select('*').in('status',['active','parked']).order('position'),
     sb.from('tasks').select('*').order('position'),
     sb.from('ideas').select('*').order('created_at')
   ]);
@@ -284,6 +322,7 @@ function render(){
   } else { ks.classList.add('hidden'); ks.innerHTML=''; }
   const ib=$('ideas'); ib.innerHTML='';
   MODEL.ideas.forEach(i=>{const d=document.createElement('div');d.className='idea';d.textContent=i.text;ib.appendChild(d);});
+  renderRadar();
   updateOverall();
 }
 
