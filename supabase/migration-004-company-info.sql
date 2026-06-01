@@ -1,4 +1,4 @@
--- migration-003-company-info
+-- migration-004-company-info
 -- Company reference info (UEN, D-U-N-S, registered address, SSIC, etc.), surfaced on
 -- company.html. Gated behind the same single-user login + RLS as the rest of the app.
 -- Key-value shape so fields can be added/removed without a schema change; the page
