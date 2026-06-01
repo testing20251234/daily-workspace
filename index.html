@@ -65,6 +65,22 @@
   .sub-text{flex:1;font-size:16.5px} li.done .sub-text{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--line)}
   .tag-opt{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:1px 8px;margin-top:3px;flex:none}
 
+  /* keystone — the single smallest next step on the top objective */
+  .keystone{background:var(--accent);color:#fff;border-radius:16px;padding:18px 20px;margin-bottom:24px;
+    box-shadow:var(--shadow);cursor:pointer;transition:transform .15s}
+  .keystone:hover{transform:translateY(-1px)}
+  html[data-mode="deep"] .keystone{color:#221d18}
+  .keystone .k-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.82;margin-bottom:7px}
+  .keystone .k-text{font-size:20px;font-weight:500;line-height:1.28}
+  .keystone .k-proj{font-size:13px;opacity:.85;margin-top:7px;font-style:italic}
+  /* sequential: the next step glows, later steps recede */
+  li.sub.next{background:var(--accent-soft)}
+  li.sub.next .sub-text{font-weight:600}
+  li.sub.upcoming{opacity:.5}
+  .next-chip{font-size:10px;letter-spacing:.08em;text-transform:uppercase;background:var(--accent);color:#fff;
+    border-radius:99px;padding:2px 8px;margin-top:2px;flex:none}
+  html[data-mode="deep"] .next-chip{color:#221d18}
+
   .ideas{margin-top:34px}
   .ideas h2{font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:12px}
   .idea{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:13px 16px;margin-bottom:9px;font-size:16px;display:flex;gap:10px;align-items:flex-start}
@@ -110,6 +126,8 @@
     <button class="pill" data-person="both">Both</button>
   </div>
   <p class="intro" id="intro"></p>
+
+  <div class="keystone hidden" id="keystone"></div>
 
   <div class="overall">
     <div class="ring"><svg width="58" height="58">
@@ -224,29 +242,46 @@ function render(){
   $('dateLabel').textContent = new Date(today+'T00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
   $('intro').textContent = CURRENT_PERSON==='both' ? "Everyone's day." : `${CURRENT_PERSON}'s day.`;
   const host = $('goals'); host.innerHTML='';
-  let shown = 0;
+  let shown = 0; const projNexts = [];
   MODEL.projects.forEach(p=>{
     const list = visibleTasks(p.id);
     if(!list.length) return;
     shown++;
     const st = reqStats(list);
     const card = document.createElement('div');
+    card.id = 'proj-'+p.id;
     card.className='goal'+(st.complete?' complete':'');
     card.innerHTML = `<div class="goal-head"><div class="goal-title">${esc(p.name)}</div>
       <span class="goal-area">${esc(p.area)}</span><div class="goal-pct">${st.done}/${st.total}</div></div>
       ${p.why?`<div class="goal-why">${esc(p.why)}</div>`:''}
       <div class="bar"><i style="width:${st.pct}%"></i></div><ul class="subs"></ul>`;
     const ul = card.querySelector('.subs');
+    // sequential: first open required leaf = this project's "next"; later open required leaves recede
+    let nextClaimed = false;
     list.forEach(t=>{
-      const li=document.createElement('li'); li.className='sub'+(t.status==='done'?' done':'');
+      const li=document.createElement('li');
+      let cls='sub', chip='';
+      if(t.status==='done'){ cls+=' done'; }
+      else if(!t.optional && !nextClaimed){ cls+=' next'; nextClaimed=true; chip='<span class="next-chip">▶ next</span>'; projNexts.push({p,t}); }
+      else if(!t.optional){ cls+=' upcoming'; }
+      if(!chip && t.optional) chip='<span class="tag-opt">optional</span>';
+      li.className=cls;
       li.innerHTML=`<span class="box"><svg viewBox="0 0 14 14"><polyline points="2,7 6,11 12,3"/></svg></span>
-        <span class="sub-text">${esc(t.text)}</span>${t.optional?'<span class="tag-opt">optional</span>':''}`;
+        <span class="sub-text">${esc(t.text)}</span>${chip}`;
       li.onclick=()=>toggle(t, li);
       ul.appendChild(li);
     });
     host.appendChild(card);
   });
   if(!shown) host.innerHTML='<div class="empty">No open tasks. Add some via Claude, or enjoy the quiet. 🌿</div>';
+  // keystone = the next step of the highest-priority project (projects are ordered by position)
+  const ks=$('keystone');
+  if(projNexts.length){
+    const {p,t}=projNexts[0];
+    ks.classList.remove('hidden');
+    ks.innerHTML=`<div class="k-label">▶ Start here · keystone</div><div class="k-text">${esc(t.text)}</div><div class="k-proj">in ${esc(p.name)}</div>`;
+    ks.onclick=()=>{const c=document.getElementById('proj-'+p.id); if(c) c.scrollIntoView({behavior:'smooth',block:'center'});};
+  } else { ks.classList.add('hidden'); ks.innerHTML=''; }
   const ib=$('ideas'); ib.innerHTML='';
   MODEL.ideas.forEach(i=>{const d=document.createElement('div');d.className='idea';d.textContent=i.text;ib.appendChild(d);});
   updateOverall();
@@ -260,7 +295,7 @@ async function toggle(t, li){
   const wasComplete = document.querySelectorAll('.goal.complete').length;
   renderBars(); const isComplete = document.querySelectorAll('.goal.complete').length;
   if(newStatus==='done' && isComplete>wasComplete) celebrate(li);
-  updateOverall();
+  render(); // advance keystone + "next" markers to the following step
   const { error } = await sb.from('tasks').update({ status:newStatus }).eq('id', t.id);
   if(error){ alert('Save failed: '+error.message); load(); }
 }
