@@ -29,6 +29,9 @@
   .pill{background:var(--surface);border:1px solid var(--line);color:var(--muted);
     border-radius:999px;padding:6px 14px;font:inherit;font-size:13px;cursor:pointer;transition:.2s;white-space:nowrap}
   .pill:hover{border-color:var(--accent);color:var(--accent)}
+  .pill.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  html[data-mode="deep"] .pill.active{color:#221d18}
+  .persons{display:flex;gap:8px;margin:14px 0 4px}
   .row{display:flex;gap:8px}
   .intro{color:var(--muted);font-style:italic;margin:4px 0 26px;font-size:16px}
 
@@ -101,6 +104,11 @@
       <button class="pill" id="logoutBtn">Sign out</button>
     </div>
   </header>
+  <div class="persons" id="persons">
+    <button class="pill" data-person="ZW">ZW</button>
+    <button class="pill" data-person="Steph">Steph</button>
+    <button class="pill" data-person="both">Both</button>
+  </div>
   <p class="intro" id="intro"></p>
 
   <div class="overall">
@@ -131,6 +139,31 @@ const sb = supabase.createClient(WORKSPACE_CONFIG.url, WORKSPACE_CONFIG.key, {
 const RING_C = 2 * Math.PI * 24;
 let MODEL = { projects: [], tasks: [], ideas: [] };
 const today = new Date().toISOString().slice(0,10);
+
+// ---------- person (ZW / Steph / Both) ----------
+// Single login owns everything; this is just a view filter. Deep-linkable via ?person=steph
+// so each person bookmarks their own page. 'shared' tasks show on both.
+let CURRENT_PERSON = 'ZW';
+function initPerson(){
+  const url=(new URLSearchParams(location.search).get('person')||'').toLowerCase();
+  const saved=(localStorage.getItem('workspace-person')||'').toLowerCase();
+  const p=url||saved||'zw';
+  CURRENT_PERSON = p==='steph' ? 'Steph' : p==='both' ? 'both' : 'ZW';
+}
+function setPerson(p){
+  CURRENT_PERSON=p;
+  localStorage.setItem('workspace-person',p);
+  const u=new URL(location.href); u.searchParams.set('person', p==='both'?'both':p.toLowerCase());
+  history.replaceState(null,'',u);
+  syncPersons(); render();
+}
+function syncPersons(){
+  document.querySelectorAll('#persons .pill').forEach(b=>b.classList.toggle('active', b.dataset.person===CURRENT_PERSON));
+}
+function personMatch(t){
+  return CURRENT_PERSON==='both' || t.assignee===CURRENT_PERSON || t.assignee==='shared';
+}
+initPerson();
 
 // ---------- auth ----------
 const $ = id => document.getElementById(id);
@@ -176,7 +209,7 @@ async function load(){
 function visibleTasks(pid){
   // "Today" = open tasks due today-or-earlier (or undated) ∪ tasks done today.
   // Future-scheduled tasks stay hidden until their day.
-  return MODEL.tasks.filter(t=>t.project_id===pid && (
+  return MODEL.tasks.filter(t=>t.project_id===pid && personMatch(t) && (
     (t.status==='open' && (!t.scheduled_for || t.scheduled_for <= today)) ||
     (t.done_at && t.done_at.slice(0,10)===today)
   ));
@@ -189,7 +222,7 @@ function reqStats(list){
 
 function render(){
   $('dateLabel').textContent = new Date(today+'T00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
-  $('intro').textContent = '';
+  $('intro').textContent = CURRENT_PERSON==='both' ? "Everyone's day." : `${CURRENT_PERSON}'s day.`;
   const host = $('goals'); host.innerHTML='';
   let shown = 0;
   MODEL.projects.forEach(p=>{
@@ -275,6 +308,10 @@ function syncMode(){const m=document.documentElement.getAttribute('data-mode');$
 $('modeBtn').onclick=()=>{const m=document.documentElement.getAttribute('data-mode')==='deep'?'cream':'deep';
   document.documentElement.setAttribute('data-mode',m);localStorage.setItem('workspace-mode',m);syncMode();};
 syncMode();
+
+// person switcher
+document.querySelectorAll('#persons .pill').forEach(b=>b.onclick=()=>setPerson(b.dataset.person));
+syncPersons();
 
 sb.auth.onAuthStateChange(()=>refreshAuth());
 refreshAuth();
