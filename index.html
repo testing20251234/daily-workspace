@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en" data-mode="cream">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Workspace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6f1ea; --surface:#fffdf9; --ink:#2c2620; --muted:#7a6f63;
+    --line:#e6ddd0; --accent:#8b5a3c; --accent-soft:#e9ddd2; --good:#6f7d52;
+    --shadow:0 1px 2px rgba(139,90,60,.05),0 8px 24px rgba(139,90,60,.06);
+  }
+  html[data-mode="deep"]{
+    --bg:#221d18; --surface:#2c2620; --ink:#efe7da; --muted:#a89a88;
+    --line:#3a332b; --accent:#cf9b76; --accent-soft:#3a2f26; --good:#9aac79;
+    --shadow:0 1px 2px rgba(0,0,0,.2),0 8px 24px rgba(0,0,0,.25);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);
+    font-family:"Newsreader",Iowan Old Style,Charter,Georgia,serif;
+    line-height:1.5;padding:48px 20px 120px;transition:background .4s,color .4s;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:720px;margin:0 auto}
+  header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:8px}
+  .date{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  h1{font-size:34px;font-weight:500;letter-spacing:-.01em;line-height:1.1}
+  .pill{background:var(--surface);border:1px solid var(--line);color:var(--muted);
+    border-radius:999px;padding:6px 14px;font:inherit;font-size:13px;cursor:pointer;transition:.2s;white-space:nowrap}
+  .pill:hover{border-color:var(--accent);color:var(--accent)}
+  .row{display:flex;gap:8px}
+  .intro{color:var(--muted);font-style:italic;margin:4px 0 26px;font-size:16px}
+
+  .overall{background:var(--surface);border:1px solid var(--line);border-radius:16px;
+    padding:20px 22px;margin-bottom:28px;box-shadow:var(--shadow);display:flex;align-items:center;gap:18px}
+  .ring{position:relative;width:58px;height:58px;flex:none}
+  .ring svg{transform:rotate(-90deg)}
+  .ring .bg{stroke:var(--accent-soft)} .ring .fg{stroke:var(--accent);transition:stroke-dashoffset .5s ease}
+  .ring .pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600}
+  .overall .label{font-size:18px} .overall .sub{color:var(--muted);font-size:14px;margin-top:2px}
+
+  .goal{background:var(--surface);border:1px solid var(--line);border-radius:16px;
+    padding:18px 20px;margin-bottom:16px;box-shadow:var(--shadow);transition:border-color .3s}
+  .goal.complete{border-color:var(--good)}
+  .goal-head{display:flex;align-items:baseline;gap:12px}
+  .goal-title{font-size:21px;font-weight:500;flex:1}
+  .goal.complete .goal-title{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--accent-soft)}
+  .goal-area{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:1px 8px}
+  .goal-pct{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .goal-why{color:var(--muted);font-size:14.5px;font-style:italic;margin:2px 0 14px}
+  .bar{height:5px;background:var(--accent-soft);border-radius:99px;overflow:hidden;margin:10px 0 4px}
+  .bar>i{display:block;height:100%;background:var(--accent);width:0;border-radius:99px;transition:width .45s ease}
+  .goal.complete .bar>i{background:var(--good)}
+  ul.subs{list-style:none;margin-top:12px}
+  li.sub{display:flex;align-items:flex-start;gap:11px;padding:9px 8px;border-radius:10px;cursor:pointer;transition:background .15s}
+  li.sub:hover{background:var(--accent-soft)}
+  .box{width:20px;height:20px;border:1.8px solid var(--accent);border-radius:6px;flex:none;margin-top:1px;
+    display:flex;align-items:center;justify-content:center;transition:.18s}
+  .box svg{width:12px;height:12px;stroke:var(--surface);stroke-width:3;fill:none;stroke-dasharray:18;stroke-dashoffset:18;transition:stroke-dashoffset .2s .05s}
+  li.done .box{background:var(--accent);border-color:var(--accent)} li.done .box svg{stroke-dashoffset:0}
+  .sub-text{flex:1;font-size:16.5px} li.done .sub-text{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--line)}
+  .tag-opt{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:1px 8px;margin-top:3px;flex:none}
+
+  .ideas{margin-top:34px}
+  .ideas h2{font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:12px}
+  .idea{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:13px 16px;margin-bottom:9px;font-size:16px;display:flex;gap:10px;align-items:flex-start}
+  .idea::before{content:"✦";color:var(--accent);flex:none;margin-top:2px}
+  .spark{position:fixed;width:9px;height:9px;border-radius:2px;pointer-events:none;z-index:40}
+
+  /* auth */
+  #auth{max-width:380px;margin:8vh auto;text-align:center}
+  #auth h1{margin-bottom:6px}
+  #auth p{color:var(--muted);margin-bottom:24px}
+  #auth input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);
+    color:var(--ink);font:inherit;font-size:16px;margin-bottom:10px}
+  #auth button{width:100%;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:12px;font:inherit;font-size:16px;cursor:pointer}
+  html[data-mode="deep"] #auth button{color:#221d18}
+  #auth .msg{margin-top:14px;font-size:14px;color:var(--muted);min-height:20px}
+  .hidden{display:none!important}
+  .empty{color:var(--muted);font-style:italic;padding:30px 0;text-align:center}
+</style>
+</head>
+<body>
+<!-- AUTH -->
+<div id="auth">
+  <h1>Daily Workspace</h1>
+  <p>Sign in to load your day.</p>
+  <input id="email" type="email" placeholder="you@email.com" autocomplete="email">
+  <input id="pw" type="password" placeholder="password" autocomplete="current-password">
+  <button id="loginBtn">Sign in</button>
+  <div class="msg" id="authMsg"></div>
+</div>
+
+<!-- APP -->
+<div class="wrap hidden" id="app">
+  <header>
+    <div><div class="date" id="dateLabel">—</div><h1>Today</h1></div>
+    <div class="row">
+      <button class="pill" id="modeBtn">◐ Deep</button>
+      <button class="pill" id="logoutBtn">Sign out</button>
+    </div>
+  </header>
+  <p class="intro" id="intro"></p>
+
+  <div class="overall">
+    <div class="ring"><svg width="58" height="58">
+      <circle class="bg" cx="29" cy="29" r="24" fill="none" stroke-width="6"/>
+      <circle class="fg" id="ring" cx="29" cy="29" r="24" fill="none" stroke-width="6" stroke-linecap="round"/></svg>
+      <div class="pct" id="ringPct">0%</div></div>
+    <div><div class="label" id="overallLabel">Loading…</div><div class="sub" id="overallSub"></div></div>
+  </div>
+
+  <div id="goals"></div>
+  <div class="ideas"><h2>Idea parking lot</h2><div id="ideas"></div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./config.js"></script>
+<script>
+const sb = supabase.createClient(WORKSPACE_CONFIG.url, WORKSPACE_CONFIG.key);
+const RING_C = 2 * Math.PI * 24;
+let MODEL = { projects: [], tasks: [], ideas: [] };
+const today = new Date().toISOString().slice(0,10);
+
+// ---------- auth ----------
+const $ = id => document.getElementById(id);
+async function refreshAuth(){
+  const { data:{ session } } = await sb.auth.getSession();
+  if(session){ $('auth').classList.add('hidden'); $('app').classList.remove('hidden'); load(); }
+  else { $('auth').classList.remove('hidden'); $('app').classList.add('hidden'); }
+}
+$('loginBtn').onclick = async ()=>{
+  $('authMsg').textContent='…';
+  const { error } = await sb.auth.signInWithPassword({ email:$('email').value.trim(), password:$('pw').value });
+  $('authMsg').textContent = error ? error.message : '';
+  if(!error) refreshAuth();
+};
+$('pw').addEventListener('keydown',e=>{ if(e.key==='Enter') $('loginBtn').click(); });
+$('logoutBtn').onclick = async ()=>{ await sb.auth.signOut(); refreshAuth(); };
+
+// ---------- data ----------
+async function load(){
+  const [{data:projects},{data:tasks},{data:ideas}] = await Promise.all([
+    sb.from('projects').select('*').eq('status','active').order('position'),
+    sb.from('tasks').select('*').order('position'),
+    sb.from('ideas').select('*').order('created_at')
+  ]);
+  MODEL = { projects:projects||[], tasks:tasks||[], ideas:ideas||[] };
+  render();
+}
+
+// today's view: a project shows if it has any task open OR scheduled today OR done today
+function visibleTasks(pid){
+  return MODEL.tasks.filter(t=>t.project_id===pid &&
+    (t.status==='open' || (t.done_at && t.done_at.slice(0,10)===today)));
+}
+function reqStats(list){
+  const req = list.filter(t=>!t.optional);
+  const done = req.filter(t=>t.status==='done').length;
+  return { total:req.length, done, pct: req.length?Math.round(100*done/req.length):0, complete: req.length>0 && done===req.length };
+}
+
+function render(){
+  $('dateLabel').textContent = new Date(today+'T00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  $('intro').textContent = '';
+  const host = $('goals'); host.innerHTML='';
+  let shown = 0;
+  MODEL.projects.forEach(p=>{
+    const list = visibleTasks(p.id);
+    if(!list.length) return;
+    shown++;
+    const st = reqStats(list);
+    const card = document.createElement('div');
+    card.className='goal'+(st.complete?' complete':'');
+    card.innerHTML = `<div class="goal-head"><div class="goal-title">${esc(p.name)}</div>
+      <span class="goal-area">${esc(p.area)}</span><div class="goal-pct">${st.done}/${st.total}</div></div>
+      ${p.why?`<div class="goal-why">${esc(p.why)}</div>`:''}
+      <div class="bar"><i style="width:${st.pct}%"></i></div><ul class="subs"></ul>`;
+    const ul = card.querySelector('.subs');
+    list.forEach(t=>{
+      const li=document.createElement('li'); li.className='sub'+(t.status==='done'?' done':'');
+      li.innerHTML=`<span class="box"><svg viewBox="0 0 14 14"><polyline points="2,7 6,11 12,3"/></svg></span>
+        <span class="sub-text">${esc(t.text)}</span>${t.optional?'<span class="tag-opt">optional</span>':''}`;
+      li.onclick=()=>toggle(t, li);
+      ul.appendChild(li);
+    });
+    host.appendChild(card);
+  });
+  if(!shown) host.innerHTML='<div class="empty">No open tasks. Add some via Claude, or enjoy the quiet. 🌿</div>';
+  const ib=$('ideas'); ib.innerHTML='';
+  MODEL.ideas.forEach(i=>{const d=document.createElement('div');d.className='idea';d.textContent=i.text;ib.appendChild(d);});
+  updateOverall();
+}
+
+async function toggle(t, li){
+  const newStatus = t.status==='done' ? 'open' : 'done';
+  // optimistic
+  t.status=newStatus; t.done_at = newStatus==='done'? new Date().toISOString() : null;
+  li.classList.toggle('done', newStatus==='done');
+  const wasComplete = document.querySelectorAll('.goal.complete').length;
+  renderBars(); const isComplete = document.querySelectorAll('.goal.complete').length;
+  if(newStatus==='done' && isComplete>wasComplete) celebrate(li);
+  updateOverall();
+  const { error } = await sb.from('tasks').update({ status:newStatus }).eq('id', t.id);
+  if(error){ alert('Save failed: '+error.message); load(); }
+}
+
+function renderBars(){
+  let i=0;
+  MODEL.projects.forEach(p=>{
+    const list=visibleTasks(p.id); if(!list.length) return;
+    const card=document.querySelectorAll('.goal')[i++]; if(!card) return;
+    const st=reqStats(list);
+    card.classList.toggle('complete', st.complete);
+    card.querySelector('.goal-pct').textContent=`${st.done}/${st.total}`;
+    card.querySelector('.bar>i').style.width=st.pct+'%';
+  });
+}
+function updateOverall(){
+  let total=0,done=0,goals=0,gdone=0;
+  MODEL.projects.forEach(p=>{const l=visibleTasks(p.id);if(!l.length)return;goals++;const s=reqStats(l);total+=s.total;done+=s.done;if(s.complete)gdone++;});
+  const pct=total?Math.round(100*done/total):0;
+  $('ring').setAttribute('stroke-dasharray',RING_C);
+  $('ring').setAttribute('stroke-dashoffset',RING_C*(1-pct/100));
+  $('ringPct').textContent=pct+'%';
+  const lab=$('overallLabel'),sub=$('overallSub');
+  if(total===0)lab.textContent='Nothing scheduled. 🌿';
+  else if(pct===0)lab.textContent='Pick the smallest thing. Start there.';
+  else if(pct===100)lab.textContent='Everything done. 🌿';
+  else lab.textContent=['Nice — momentum.','Keep rolling.','Steady progress.','Look at you go.'][gdone%4];
+  sub.textContent=`${done} of ${total} required steps · ${gdone}/${goals} goals complete`;
+}
+
+function celebrate(anchor){
+  const r=anchor.getBoundingClientRect(),cols=['#8b5a3c','#cf9b76','#6f7d52','#d8c3a5'];
+  for(let i=0;i<16;i++){const s=document.createElement('div');s.className='spark';s.style.background=cols[i%cols.length];
+    s.style.left=(r.left+r.width*0.2)+'px';s.style.top=(r.top+8)+'px';document.body.appendChild(s);
+    const dist=60+Math.random()*70,dx=(Math.random()<.5?-1:1)*dist,dy=-Math.abs(dist)-30;
+    s.animate([{transform:'translate(0,0) rotate(0)',opacity:1},{transform:`translate(${dx}px,${dy+90}px) rotate(${Math.random()*360}deg)`,opacity:0}],
+      {duration:700+Math.random()*300,easing:'cubic-bezier(.2,.6,.4,1)'}).onfinish=()=>s.remove();}
+}
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+// mode toggle
+const savedMode=localStorage.getItem('workspace-mode');
+if(savedMode)document.documentElement.setAttribute('data-mode',savedMode);
+function syncMode(){const m=document.documentElement.getAttribute('data-mode');$('modeBtn').textContent=m==='deep'?'◑ Cream':'◐ Deep';}
+$('modeBtn').onclick=()=>{const m=document.documentElement.getAttribute('data-mode')==='deep'?'cream':'deep';
+  document.documentElement.setAttribute('data-mode',m);localStorage.setItem('workspace-mode',m);syncMode();};
+syncMode();
+
+sb.auth.onAuthStateChange(()=>refreshAuth());
+refreshAuth();
+</script>
+</body>
+</html>
