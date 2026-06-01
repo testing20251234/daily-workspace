@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en" data-mode="cream">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Company Information</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6f1ea; --surface:#fffdf9; --ink:#2c2620; --muted:#7a6f63;
+    --line:#e6ddd0; --accent:#8b5a3c; --accent-soft:#e9ddd2; --good:#6f7d52;
+    --shadow:0 1px 2px rgba(139,90,60,.05),0 8px 24px rgba(139,90,60,.06);
+  }
+  html[data-mode="deep"]{
+    --bg:#221d18; --surface:#2c2620; --ink:#efe7da; --muted:#a89a88;
+    --line:#3a332b; --accent:#cf9b76; --accent-soft:#3a2f26; --good:#9aac79;
+    --shadow:0 1px 2px rgba(0,0,0,.2),0 8px 24px rgba(0,0,0,.25);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);
+    font-family:"Newsreader",Iowan Old Style,Charter,Georgia,serif;
+    line-height:1.5;padding:48px 20px 120px;transition:background .4s,color .4s;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:720px;margin:0 auto}
+  header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:8px}
+  .date{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  h1{font-size:34px;font-weight:500;letter-spacing:-.01em;line-height:1.1}
+  .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .pill{background:var(--surface);border:1px solid var(--line);color:var(--muted);
+    border-radius:999px;padding:6px 14px;font:inherit;font-size:13px;cursor:pointer;transition:.2s;white-space:nowrap}
+  .pill:hover{border-color:var(--accent);color:var(--accent)}
+  .pill.ok{background:var(--good);border-color:var(--good);color:#fff}
+  html[data-mode="deep"] .pill.ok{color:#221d18}
+  a.pill{text-decoration:none;display:inline-flex;align-items:center}
+  .intro{color:var(--muted);font-style:italic;margin:6px 0 28px;font-size:15.5px;line-height:1.45}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;
+    padding:18px 22px;margin-bottom:18px;box-shadow:var(--shadow)}
+  .card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px}
+  .c-name{font-size:21px;font-weight:500;line-height:1.15}
+  .c-sub{color:var(--muted);font-size:13.5px;font-style:italic;margin-top:2px}
+
+  .field{display:grid;grid-template-columns:158px 1fr auto;gap:14px;align-items:center;
+    padding:11px 0;border-top:1px solid var(--line)}
+  .field:first-child{border-top:none}
+  .f-label{font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  .f-value{font-size:16.5px;cursor:pointer;word-break:break-word;transition:color .15s}
+  .f-value:hover{color:var(--accent)}
+  .copy{background:var(--surface);border:1px solid var(--line);color:var(--muted);border-radius:8px;
+    padding:5px 13px;font:inherit;font-size:13px;cursor:pointer;transition:.15s;white-space:nowrap}
+  .copy:hover{border-color:var(--accent);color:var(--accent)}
+  .copy.ok{background:var(--good);border-color:var(--good);color:#fff}
+  html[data-mode="deep"] .copy.ok{color:#221d18}
+  @media(max-width:560px){
+    .field{grid-template-columns:1fr auto;column-gap:12px;row-gap:2px}
+    .f-label{grid-column:1 / -1}
+  }
+
+  /* auth (cloned from the workspace) */
+  #auth{max-width:380px;margin:8vh auto;text-align:center}
+  #auth h1{margin-bottom:6px}
+  #auth p{color:var(--muted);margin-bottom:24px}
+  #auth input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);
+    color:var(--ink);font:inherit;font-size:16px;margin-bottom:10px}
+  #auth button{width:100%;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:12px;font:inherit;font-size:16px;cursor:pointer}
+  html[data-mode="deep"] #auth button{color:#221d18}
+  #auth .msg{margin-top:14px;font-size:14px;color:var(--muted);min-height:20px}
+  .hidden{display:none!important}
+  .empty{color:var(--muted);font-style:italic;padding:30px 0;text-align:center}
+</style>
+</head>
+<body>
+<!-- AUTH -->
+<div id="auth">
+  <h1>Company Info</h1>
+  <p>Sign in to view your company details.</p>
+  <input id="email" type="email" placeholder="you@email.com" autocomplete="email">
+  <input id="pw" type="password" placeholder="password" autocomplete="current-password">
+  <button id="loginBtn">Sign in</button>
+  <div class="msg" id="authMsg"></div>
+</div>
+
+<!-- APP -->
+<div class="wrap hidden" id="app">
+  <header>
+    <div><div class="date">Reference</div><h1>Company Information</h1></div>
+    <div class="row">
+      <a class="pill" href="./index.html">&larr; Workspace</a>
+      <button class="pill" id="modeBtn">&#9680; Deep</button>
+      <button class="pill" id="logoutBtn">Sign out</button>
+    </div>
+  </header>
+  <p class="intro">Tap any value (or its <b>Copy</b> button) to copy it. Behind your workspace login &middot; public-safe registry fields only &mdash; NRICs, home addresses and shareholdings are deliberately kept out of here.</p>
+  <div id="cards"><div class="empty">Loading&hellip;</div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./config.js"></script>
+<script>
+// Same single-user pass-through lock as the workspace (avoids the navigator.locks reload deadlock).
+const sb = supabase.createClient(WORKSPACE_CONFIG.url, WORKSPACE_CONFIG.key, {
+  auth: { persistSession: true, autoRefreshToken: true, lock: async (_n,_t,fn)=>fn() }
+});
+const $ = id => document.getElementById(id);
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+// Display order + headers for each entity group (data lives in the company_info table).
+const ENTITIES = [
+  {key:'SBH',      name:'Sauna Bath House',         sub:'Pte. Ltd.'},
+  {key:'AHP',      name:'A Healthy People Clinic',  sub:'Pte. Ltd.'},
+  {key:'HL',       name:'House Longevity',          sub:'Pte. Ltd.'},
+  {key:'OFFICERS', name:'Officers',                 sub:'Shared across all entities'},
+];
+
+// ---------- copy ----------
+async function copyText(text, btn){
+  try { await navigator.clipboard.writeText(text); }
+  catch(e){
+    const ta=document.createElement('textarea'); ta.value=text;
+    ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch(_){}
+    ta.remove();
+  }
+  if(btn){ const old=btn.textContent; btn.textContent='Copied ✓'; btn.classList.add('ok');
+    setTimeout(()=>{ btn.textContent=old; btn.classList.remove('ok'); }, 1200); }
+}
+
+// ---------- data ----------
+async function load(){
+  const { data, error } = await sb.from('company_info').select('*').order('entity').order('position');
+  if(error){ $('cards').innerHTML='<div class="empty">Could not load: '+esc(error.message)+'</div>'; return; }
+  render(data || []);
+}
+function render(rows){
+  const host=$('cards'); host.innerHTML='';
+  ENTITIES.forEach(ent=>{
+    const fields=rows.filter(r=>r.entity===ent.key).sort((a,b)=>a.position-b.position);
+    if(!fields.length) return;
+    const allText=fields.map(f=>`${f.label}: ${f.value}`).join('\n');
+    const card=document.createElement('div'); card.className='card';
+    card.innerHTML=`<div class="card-head">
+        <div><div class="c-name">${esc(ent.name)}</div><div class="c-sub">${esc(ent.sub)}</div></div>
+        <button class="pill copyall" type="button">Copy all</button>
+      </div><div class="fields"></div>`;
+    card.querySelector('.copyall').onclick = e => copyText(allText, e.currentTarget);
+    const fhost=card.querySelector('.fields');
+    fields.forEach(f=>{
+      const r=document.createElement('div'); r.className='field';
+      r.innerHTML=`<div class="f-label">${esc(f.label)}</div>
+        <div class="f-value" title="Click to copy">${esc(f.value)}</div>
+        <button class="copy" type="button">Copy</button>`;
+      const btn=r.querySelector('.copy');
+      const doCopy=()=>copyText(f.value, btn);
+      btn.onclick=doCopy; r.querySelector('.f-value').onclick=doCopy;
+      fhost.appendChild(r);
+    });
+    host.appendChild(card);
+  });
+  if(!host.children.length) host.innerHTML='<div class="empty">No company info stored yet.</div>';
+}
+
+// ---------- auth (cloned from index.html, incl. stale-token self-heal) ----------
+const STORAGE_KEY = 'sb-ekgvjhngsorjgavozhhf-auth-token';
+async function getSessionSafe(){
+  return Promise.race([
+    sb.auth.getSession().then(r => r.data.session).catch(() => null),
+    new Promise(res => setTimeout(() => res('TIMEOUT'), 3500))
+  ]);
+}
+async function refreshAuth(){
+  let session = await getSessionSafe();
+  if(session === 'TIMEOUT'){ try { localStorage.removeItem(STORAGE_KEY); } catch(e){} session = null; }
+  if(session){ $('auth').classList.add('hidden'); $('app').classList.remove('hidden'); load(); }
+  else { $('auth').classList.remove('hidden'); $('app').classList.add('hidden'); }
+}
+$('loginBtn').onclick = async ()=>{
+  $('authMsg').textContent='…';
+  const { error } = await sb.auth.signInWithPassword({ email:$('email').value.trim(), password:$('pw').value });
+  $('authMsg').textContent = error ? error.message : '';
+  if(!error) refreshAuth();
+};
+$('pw').addEventListener('keydown',e=>{ if(e.key==='Enter') $('loginBtn').click(); });
+$('logoutBtn').onclick = async ()=>{ await sb.auth.signOut(); refreshAuth(); };
+
+// mode toggle (shares the workspace's saved preference)
+const savedMode=localStorage.getItem('workspace-mode');
+if(savedMode)document.documentElement.setAttribute('data-mode',savedMode);
+function syncMode(){const m=document.documentElement.getAttribute('data-mode');$('modeBtn').textContent=m==='deep'?'◑ Cream':'◐ Deep';}
+$('modeBtn').onclick=()=>{const m=document.documentElement.getAttribute('data-mode')==='deep'?'cream':'deep';
+  document.documentElement.setAttribute('data-mode',m);localStorage.setItem('workspace-mode',m);syncMode();};
+syncMode();
+
+sb.auth.onAuthStateChange(()=>refreshAuth());
+refreshAuth();
+</script>
+</body>
+</html>
